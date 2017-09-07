@@ -41,25 +41,3 @@ def parallel_apply(grouped, func, func_args=None, chunksize=None, maxtasksperchi
     else:
         res = pd.concat(res, axis=0)
     return res
-
-
-def test_apply_func(fr):
-    fr["b"] *= fr["a"]
-    return fr
-
-
-def test_parallel_apply():
-    a = [2, 2, 4]
-    b = [2, 3, 4]
-    df = pd.DataFrame({"a": a, "b": b})
-
-    grouped = df.groupby("a", as_index=False)
-    pd_result = grouped.apply(test_apply_func)
-
-    grouped = df.groupby("a", as_index=False)
-    my_result = parallel_apply(grouped, test_apply_func)
-    assert (pd_result == my_result).all().all()
-
-
-if __name__ == "__main__":
-    test_parallel_apply()
