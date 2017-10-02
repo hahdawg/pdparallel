@@ -2,7 +2,8 @@ import multiprocessing as mp
 import pandas as pd
 
 
-def parallel_apply(grouped, func, func_args=None, chunksize=None, maxtasksperchild=None, njobs=-1):
+def parallel_apply(grouped, func, func_args=None, pool_kwargs=None,
+                   imap_kwargs=None, njobs=-1):
     """
     Does a pandas apply in parallel.
 
@@ -11,10 +12,10 @@ def parallel_apply(grouped, func, func_args=None, chunksize=None, maxtasksperchi
     grouped: result of df.groupby()
     func: DataFrame -> DataFrame
     func_args: tuple
-    chunksize: int
-        See documentation for multiprocessing.imap_unordered
-    maxtasksperchild: int
-        See documentation for multiprocessing.pool
+    pool_kwargs: dict
+        Parameters to pass to multiprocessing.Pool
+    imap_kwargs: dict
+        Parameters to pass to multiprocessing.Pool.imap_unordered
     njobs:
         Number of cores to use. Set to -1 to use all cores.
 
@@ -25,19 +26,22 @@ def parallel_apply(grouped, func, func_args=None, chunksize=None, maxtasksperchi
     if njobs == -1:
         njobs = mp.cpu_count()
 
-    chunksize = chunksize or 1
-    pool = mp.Pool(processes=njobs, maxtasksperchild=maxtasksperchild)
+    pool_kwargs = pool_kwargs or dict()
+    imap_kwargs = imap_kwargs or dict()
+
+    pool = mp.Pool(processes=njobs, **pool_kwargs)
     if func_args is None:
         chunks = (chunk for _, chunk in grouped)
     else:
         chunks = ((chunk,) + func_args for _, chunk in grouped)
 
-    res = pool.imap_unordered(func, chunks, chunksize=chunksize)
+    applied = pool.imap_unordered(func, chunks, **imap_kwargs)
     pool.close()
     pool.join()
-    res = list(res)
-    if isinstance(res[0], dict):
-        res = pd.DataFrame(res)
+
+    applied = list(applied)
+    if isinstance(applied[0], dict):
+        applied = pd.DataFrame(applied)
     else:
-        res = pd.concat(res, axis=0)
-    return res
+        applied = pd.concat(applied, axis=0)
+    return applied
